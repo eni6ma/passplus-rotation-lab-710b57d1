@@ -1,0 +1,60 @@
+name: Pass+ compiled publisher
+run-name: Pass+ publisher ${{ inputs.request_id || github.run_id }}
+"on":
+  workflow_dispatch:
+    inputs:
+      wait_seconds:
+        description: Bounded wait for an accepted synthetic job (0 to 300 seconds)
+        default: '0'
+        type: string
+      request_id:
+        description: Operator correlation ID
+        default: ''
+        type: string
+  schedule:
+    - cron: '3-58/5 * * * *'
+permissions:
+  contents: write
+concurrency:
+  group: passplus-compiled-publisher
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'eni6ma/passplus-rotation-lab-710b57d1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version: '1.25.1'
+          cache: false
+      - name: Verify pinned source and compile the stamped publisher
+        working-directory: publisher
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,pathlib,subprocess
+          manifest=json.loads(pathlib.Path('BUILD.json').read_text())
+          assert manifest['buildId']=='passplus-rotation-20261106-publisher-05'
+          assert subprocess.check_output(['go','env','GOVERSION'],text=True).strip()==manifest['compiler']
+          for name,expected in manifest['sourceSha256'].items():
+              assert hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()==expected,name
+          PY
+          CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags '-X main.buildID=passplus-rotation-20261106-publisher-05' -o ../publisher-worker .
+          python3 - <<'PY'
+          import hashlib,pathlib
+          assert hashlib.sha256(pathlib.Path('../publisher-worker').read_bytes()).hexdigest()=='a0c28ef2526dda80874beaa19b047293b68149b0718a524dc2baeecae1d54430'
+          PY
+      - name: Run the authenticated compiled worker
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PASSPLUS_WORKER_PRIVATE_JWK: ${{ secrets.PASSPLUS_WORKER_PRIVATE_JWK }}
+          PASSPLUS_VERIFIER_PUBLIC_JWK: '{"kty":"EC","x":"zeO0Pf6GMANKpUM-RjmsquBYkfD4mYj8IySrQW-FtHY","y":"vl9Wn9HuDtboAkDRRlBqdaTw7toNWAImsAX8MMyovAI","crv":"P-256"}'
+          PASSPLUS_VERIFIER_ORIGIN: 'https://passplus-e6-710b57d1-verifier.wasmer.app'
+          PASSPLUS_AUTHORITY_PUBLIC_HEX: 'c3f88c4aa15f62a80ce923fcea6d73d4d69c2d44c096233fbf8328c74159cdce'
+          PASSPLUS_REPOSITORY: 'eni6ma/passplus-rotation-lab-710b57d1'
+          PASSPLUS_REPOSITORY_ID: '1448406382'
+          PASSPLUS_WORKER_WAIT_SECONDS: ${{ inputs.wait_seconds || '0' }}
+        run: ./publisher-worker --worker

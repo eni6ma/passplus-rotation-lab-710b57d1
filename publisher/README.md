@@ -1,0 +1,25 @@
+# Compiled Pass+ replacement publisher
+
+This binary accepts only a short-lived, signed `passplus.rotation-publication.v1` authorization from its independently pinned synthetic authority. The authorization binds the existing ID4 decision, all four candidate decisions, exact encrypted files, account, handle, repository identity, predecessor, successor registration and build stamp. Browser success flags and unsigned payloads are refused.
+
+It creates an ordinary new commit on the same handle branch using GitHub `createCommitOnBranch`. The commit replaces the current circuit files at the tip; the predecessor remains in Git history. The API's expected-head guard prevents two concurrent writers from losing each other's commit. There is no force-push, history rewrite, new user branch or separate ref-update operation.
+
+The GitHub token is runtime-only. It is never embedded in the binary, source, build stamp or receipt. The hosted pilot runs the binary in the isolated registry's GitHub Actions job with that repository's temporary `GITHUB_TOKEN`; Wasmer and browsers receive no GitHub publishing credential. Compilation alone does not hide an embedded token.
+
+Run `go test ./...` for authorization, publication, lost-response, parent, readback and idempotency tests. Build with `go build -trimpath -buildvcs=false -ldflags '-X main.buildID=BUILD_ID' -o build/passplus-publisher .`. Cross-build the hosted artifact with `GOOS=linux GOARCH=amd64 CGO_ENABLED=0`. Record its SHA-256, dependency commit and build ID before use. Build artifacts are ignored.
+
+The command reads its signed envelope from standard input. Configuration is limited to `PASSPLUS_REPOSITORY`, `PASSPLUS_REPOSITORY_ID`, `PASSPLUS_AUTHORITY_PUBLIC_HEX` and runtime `GITHUB_TOKEN`. The API host is fixed; redirect credential forwarding is refused. Standard output contains only the sanitized receipt. `--version` reports build identity without reading credentials.
+
+This release is restricted to isolated `eni6ma/passplus-rotation-lab-*` repositories and synthetic handles. It refuses production claims. Production authority and approved proof transport remain separate qualification gates.
+
+The circuit files use the existing whole-E6 publication layout: `manifest.json`, `archive.e6.e6ps` and `SHA256SUMS`. The E6PS envelope protects the complete unchanged E6AR circuit archive. Raw immutable readback supports full archives larger than the GitHub JSON contents base64 limit.
+
+File limits match the canonical reader: the encrypted archive allows an 8 MiB full archive plus 64 KiB of envelope overhead, the manifest allows 16 KiB, and checksums allow 512 bytes. Signed authorization tests cover each exact bound and refusal above it.
+
+Build 04 applies those same per-file bounds to immutable readback and tests an encrypted archive at the full 8 MiB plus 64 KiB boundary. `--worker` now connects the binary to the verifier's separately authenticated private outbox transport. It claims only a durably accepted job, verifies the small ES256 service result, retrieves the larger encrypted envelope under the same lease and signed hash/length, then independently validates its existing five-proof Ed25519 authorization before reading `GITHUB_TOKEN`.
+
+The private service caller uses runtime `PASSPLUS_WORKER_PRIVATE_JWK`; the independently pinned verifier key is `PASSPLUS_VERIFIER_PUBLIC_JWK`. `PASSPLUS_VERIFIER_ORIGIN` must be the exact synthetic verifier Wasmer origin. These inputs are not compiled credentials. `PASSPLUS_WORKER_WAIT_SECONDS` defaults to one poll and may request up to 300 seconds of bounded polling for the test job. The client allows the qualified instance handover between requests. A lost completion response retries the same receipt; an uncertain earlier publication is reconciled by the next valid lease, using the same ordinary-commit readback rules. A published job resumes acknowledgement finalization without reading the GitHub credential.
+
+Worker output contains only outcome, operation ID and publisher build. Failed signatures, altered download bytes, expired/mismatched service results or invalid five-proof authorization stop before a credential read or commit. Turning off new ceremonies does not remove accepted jobs, their current-epoch checks or reconciliation. Hosted GitHub Actions execution and Wasmer replacement acceptance require separate evidence.
+
+Build 05 corrects the branch input to GitHub's `CommittableBranch`: the field is `branchName`. The live API rejected the former `refName` input before creating a commit. A captured live schema and an independent schema-bound commit test now guard that request. The ordinary same-branch commit, expected-parent guard, history preservation and credential custody remain the same.

@@ -1,0 +1,8 @@
+{
+  "schema": "passplus.github-graphql-contract.v1",
+  "source": "https://api.github.com/graphql",
+  "verifiedOn": "2026-11-06",
+  "type": "CommittableBranch",
+  "inputFields": ["id", "repositoryNameWithOwner", "branchName"],
+  "identityAlternatives": [["id"], ["repositoryNameWithOwner", "branchName"]]
+}

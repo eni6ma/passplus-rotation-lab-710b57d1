@@ -1,0 +1,55 @@
+{
+  "schema": "passplus.compiled-publisher-build.v1",
+  "buildId": "passplus-rotation-20261106-publisher-05",
+  "scope": "synthetic-test-only",
+  "compiler": "go1.25.1",
+  "flags": [
+    "-trimpath",
+    "-buildvcs=false",
+    "-X main.buildID=passplus-rotation-20261106-publisher-05"
+  ],
+  "sourceSha256": {
+    "github_schema_test.go": "edb6aa4fe101615dda43e090f91ccaa19b6c76dd073a0e14171c9f8c7df37523",
+    "large_archive_test.go": "79d671a6610818f33249e713ce8d03748d1ca232dc3bef8e4b79e2c16c32408d",
+    "main.go": "094b371ab297d158c437066dfd5f6b902937d772d44daec6d059e3bb696b2c3f",
+    "main_test.go": "b9df589ab649d38f0d27802ea09a6920a38158ed57b7ab5c5780e256d1108902",
+    "worker.go": "e694a6648ba7f47f5b4134aed7718abc8ae365251c944f80a5d0e06c7d7acacb",
+    "worker_test.go": "1b65ae6826fc067933a25c77cf9d76cc1a112aa2a546dc3f17dde0ade9e46367",
+    "go.mod": "1fa29589439453c06faf60897ea1558835225f84bf5caee1dc8053c48edf99e3",
+    "README.md": "0746ad133b2f705f329594a970aba3a5cfaf24ccade10db866e5cbd483f3e983",
+    "github-committable-branch.schema.json": "67844e0ebdca6b480c30046efef0d5a193a480693fb00a8728845368ee1c0485"
+  },
+  "runtimeCredentialEmbedded": false,
+  "publication": "ordinary commit at the same handle branch tip; complete E6AR archive protected by existing E6PS v2 envelope",
+  "registryFiles": [
+    "manifest.json",
+    "archive.e6.e6ps",
+    "SHA256SUMS"
+  ],
+  "tests": "go test ./...: PASS; includes independently captured live GitHub branch-input schema, exact canonical file bounds/readback, signed worker authorization and delivery, token custody, lost-response reconciliation and idempotency",
+  "artifacts": {
+    "passplus-publisher": {
+      "sha256": "8b0814b9ea7aeac2e5e3630bb042a23aeb58e2a37313ce20bf835d26f8f0063c",
+      "bytes": 8828754
+    },
+    "passplus-publisher-linux-amd64": {
+      "sha256": "a0c28ef2526dda80874beaa19b047293b68149b0718a524dc2baeecae1d54430",
+      "bytes": 9161920
+    }
+  },
+  "fileLimits": {
+    "manifest.json": 16384,
+    "archive.e6.e6ps": 8454144,
+    "SHA256SUMS": 512
+  },
+  "testCasesPassed": 36,
+  "worker": {
+    "profile": "compiled-publisher-v1",
+    "githubTokenRuntimeOnly": true,
+    "serviceIdentityDistinctFromBroker": true,
+    "largeEnvelopeLimit": 20971520,
+    "maximumWaitSeconds": 300,
+    "handoverMilliseconds": 1500,
+    "hostedExecution": "NOT_RUN"
+  }
+}
