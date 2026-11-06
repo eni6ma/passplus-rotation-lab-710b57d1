@@ -49,6 +49,7 @@ func TestCanonicalEncryptedArchiveAndMetadataBounds(t *testing.T) {
 			a.Files[file.index].Content = base64.StdEncoding.EncodeToString(data)
 			a.Files[file.index].SHA256 = sum(data)
 			a.PayloadDigest = a.Files[1].SHA256
+			a.ReplacementManifestSHA256 = a.Files[0].SHA256
 			for i := 1; i < 5; i++ {
 				a.Proofs[i].PayloadDigest = a.PayloadDigest
 			}

@@ -1,10 +1,12 @@
 # Compiled Pass+ replacement publisher
 
-This binary accepts only a short-lived, signed `passplus.rotation-publication.v1` authorization from its independently pinned synthetic authority. The authorization binds the existing ID4 decision, all four candidate decisions, exact encrypted files, account, handle, repository identity, predecessor, successor registration and build stamp. Browser success flags and unsigned payloads are refused.
+This binary accepts only a short-lived, signed `passplus.rotation-publication.v2` authorization from its independently pinned synthetic authority. The authorization binds the existing ID4 decision and nonce, all four candidate decisions and original context hashes, exact replacement-manifest SHA-256, the complete requested ID1 through ID4 grade set, requesting device public key and browser binding, encrypted files, account, handle, repository identity, predecessor, successor registration and build stamp. Browser success flags, unsigned payloads and v1 publication authorizations are refused. Receipt v1 remains the ordinary-commit result format; it does not authorize publication.
 
 It creates an ordinary new commit on the same handle branch using GitHub `createCommitOnBranch`. The commit replaces the current circuit files at the tip; the predecessor remains in Git history. The API's expected-head guard prevents two concurrent writers from losing each other's commit. There is no force-push, history rewrite, new user branch or separate ref-update operation.
 
 The GitHub token is runtime-only. It is never embedded in the binary, source, build stamp or receipt. The hosted pilot runs the binary in the isolated registry's GitHub Actions job with that repository's temporary `GITHUB_TOKEN`; Wasmer and browsers receive no GitHub publishing credential. Compilation alone does not hide an embedded token.
+
+Repository identity checks require the numeric ID, exact full name, and explicit nonarchived/nondisabled state. GitHub's `full-repository` response makes user `permissions` metadata optional. An installation/job token can omit it; the commit API enforces that token's write permission. If permission metadata is supplied, the publisher requires an explicit `push: true`. Denied or malformed metadata is refused before publication. The captured official schema and regression tests preserve this distinction.
 
 Run `go test ./...` for authorization, publication, lost-response, parent, readback and idempotency tests. Build with `go build -trimpath -buildvcs=false -ldflags '-X main.buildID=BUILD_ID' -o build/passplus-publisher .`. Cross-build the hosted artifact with `GOOS=linux GOARCH=amd64 CGO_ENABLED=0`. Record its SHA-256, dependency commit and build ID before use. Build artifacts are ignored.
 

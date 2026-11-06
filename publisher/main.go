@@ -59,37 +59,44 @@ type Proof struct {
 	Role          string `json:"role"`
 	Purpose       string `json:"purpose"`
 	PayloadDigest string `json:"payloadDigest"`
+	ContextHash   string `json:"contextHash"`
+	DeviceBinding string `json:"deviceBinding"`
 	Accepted      bool   `json:"accepted"`
 }
 type Authorization struct {
-	Schema            string            `json:"schema"`
-	Environment       string            `json:"environment"`
-	Audience          string            `json:"audience"`
-	Scope             string            `json:"scope"`
-	OperationID       string            `json:"operationId"`
-	AccountID         string            `json:"accountId"`
-	Handle            string            `json:"handle"`
-	Repository        string            `json:"repository"`
-	RepositoryID      int64             `json:"repositoryId"`
-	Branch            string            `json:"branch"`
-	PredecessorCommit string            `json:"predecessorCommit"`
-	PredecessorDigest string            `json:"predecessorDigest"`
-	OldRegistration   string            `json:"oldRegistration"`
-	NewRegistration   string            `json:"newRegistration"`
-	OldVersion        int               `json:"oldVersion"`
-	NewVersion        int               `json:"newVersion"`
-	OldEpoch          int               `json:"oldEpoch"`
-	NewEpoch          int               `json:"newEpoch"`
-	IssuedAt          int64             `json:"issuedAt"`
-	ExpiresAt         int64             `json:"expiresAt"`
-	AcceptedAt        int64             `json:"acceptedAt"`
-	PayloadDigest     string            `json:"payloadDigest"`
-	FileSetDigest     string            `json:"fileSetDigest"`
-	BuildID           string            `json:"buildId"`
-	OldCircuits       map[string]string `json:"oldCircuits"`
-	NewCircuits       map[string]string `json:"newCircuits"`
-	Proofs            []Proof           `json:"proofs"`
-	Files             []File            `json:"files"`
+	Schema                    string            `json:"schema"`
+	Environment               string            `json:"environment"`
+	Audience                  string            `json:"audience"`
+	Scope                     string            `json:"scope"`
+	OperationID               string            `json:"operationId"`
+	AccountID                 string            `json:"accountId"`
+	Handle                    string            `json:"handle"`
+	Repository                string            `json:"repository"`
+	RepositoryID              int64             `json:"repositoryId"`
+	Branch                    string            `json:"branch"`
+	PredecessorCommit         string            `json:"predecessorCommit"`
+	PredecessorDigest         string            `json:"predecessorDigest"`
+	OldRegistration           string            `json:"oldRegistration"`
+	NewRegistration           string            `json:"newRegistration"`
+	OldVersion                int               `json:"oldVersion"`
+	NewVersion                int               `json:"newVersion"`
+	OldEpoch                  int               `json:"oldEpoch"`
+	NewEpoch                  int               `json:"newEpoch"`
+	IssuedAt                  int64             `json:"issuedAt"`
+	ExpiresAt                 int64             `json:"expiresAt"`
+	AcceptedAt                int64             `json:"acceptedAt"`
+	PayloadDigest             string            `json:"payloadDigest"`
+	FileSetDigest             string            `json:"fileSetDigest"`
+	ReplacementManifestSHA256 string            `json:"replacementManifestSha256"`
+	RequestedGrades           []string          `json:"requestedGrades"`
+	RequestingDevicePublicKey string            `json:"requestingDevicePublicKey"`
+	RequestingDeviceBinding   string            `json:"requestingDeviceBinding"`
+	AuthorizingNonce          string            `json:"authorizingNonce"`
+	BuildID                   string            `json:"buildId"`
+	OldCircuits               map[string]string `json:"oldCircuits"`
+	NewCircuits               map[string]string `json:"newCircuits"`
+	Proofs                    []Proof           `json:"proofs"`
+	Files                     []File            `json:"files"`
 }
 type Receipt struct {
 	Schema         string `json:"schema"`
@@ -143,14 +150,16 @@ func authorize(c config, input []byte) (Authorization, error) {
 		return a, rejected()
 	}
 	now := c.now().Unix()
-	if a.Schema != "passplus.rotation-publication.v1" || a.Environment != "synthetic-test" || a.Audience != "passplus-compiled-github-publisher" || a.Scope != "commit-circuit-family" ||
+	if a.Schema != "passplus.rotation-publication.v2" || a.Environment != "synthetic-test" || a.Audience != "passplus-compiled-github-publisher" || a.Scope != "commit-circuit-family" ||
 		!uuid.MatchString(a.OperationID) || !uuid.MatchString(a.AccountID) || !handle.MatchString(a.Handle) || a.Branch != a.Handle ||
 		a.Repository != c.repository || a.RepositoryID != c.repositoryID || !strings.HasPrefix(c.repository, "eni6ma/passplus-rotation-lab-") ||
 		!oid.MatchString(a.PredecessorCommit) || !hash.MatchString(a.PredecessorDigest) || !hash.MatchString(a.PayloadDigest) || !hash.MatchString(a.FileSetDigest) ||
 		!uuid.MatchString(a.OldRegistration) || !uuid.MatchString(a.NewRegistration) || a.OldRegistration == a.NewRegistration ||
 		a.OldVersion < 1 || a.NewVersion != a.OldVersion+1 || a.OldEpoch < 1 || a.NewEpoch != a.OldEpoch+1 ||
 		a.IssuedAt > now+5 || a.ExpiresAt <= now || a.ExpiresAt-a.IssuedAt > 120 || a.AcceptedAt > a.IssuedAt || a.AcceptedAt < 1 ||
-		a.BuildID == "" || len(a.BuildID) > 128 || len(a.Files) != 3 || len(a.Proofs) != 5 || len(a.OldCircuits) != 4 || len(a.NewCircuits) != 4 {
+		a.BuildID == "" || len(a.BuildID) > 128 || len(a.Files) != 3 || len(a.Proofs) != 5 || len(a.OldCircuits) != 4 || len(a.NewCircuits) != 4 ||
+		!hash.MatchString(a.ReplacementManifestSHA256) || !hash.MatchString(a.RequestingDevicePublicKey) || !hash.MatchString(a.RequestingDeviceBinding) ||
+		!uuid.MatchString(a.AuthorizingNonce) || len(a.RequestedGrades) != 4 || strings.Join(a.RequestedGrades, ",") != "ID1,ID2,ID3,ID4" {
 		return a, rejected()
 	}
 	seen := map[string]bool{}
@@ -167,17 +176,20 @@ func authorize(c config, input []byte) (Authorization, error) {
 		seen[a.NewCircuits[grade]] = true
 	}
 	proofs := map[string]bool{}
+	contexts := map[string]bool{}
 	for i, p := range a.Proofs {
 		role, grade, digest := "candidate", fmt.Sprintf("ID%d", i), a.PayloadDigest
 		if i == 0 {
 			role, grade, digest = "existing", "ID4", a.PredecessorDigest
 		}
 		if !p.Accepted || p.OperationID != a.OperationID || p.Role != role || p.Grade != grade || p.Purpose != "circuit-family-replacement" ||
-			p.PayloadDigest != digest || !uuid.MatchString(p.DecisionID) || !uuid.MatchString(p.Nonce) || proofs[p.DecisionID] || proofs[p.Nonce] {
+			p.PayloadDigest != digest || !uuid.MatchString(p.DecisionID) || !uuid.MatchString(p.Nonce) || proofs[p.DecisionID] || proofs[p.Nonce] ||
+			!hash.MatchString(p.ContextHash) || contexts[p.ContextHash] || p.DeviceBinding != a.RequestingDeviceBinding || (i == 0 && p.Nonce != a.AuthorizingNonce) {
 			return a, rejected()
 		}
 		proofs[p.DecisionID] = true
 		proofs[p.Nonce] = true
+		contexts[p.ContextHash] = true
 	}
 	pairs := [][]string{}
 	for i, name := range []string{"manifest.json", "archive.e6.e6ps", "SHA256SUMS"} {
@@ -188,6 +200,9 @@ func authorize(c config, input []byte) (Authorization, error) {
 			return a, rejected()
 		}
 		if name == "archive.e6.e6ps" && file.SHA256 != a.PayloadDigest {
+			return a, rejected()
+		}
+		if name == "manifest.json" && file.SHA256 != a.ReplacementManifestSHA256 {
 			return a, rejected()
 		}
 		pairs = append(pairs, []string{file.Path, file.SHA256})
@@ -300,19 +315,29 @@ func publish(c config, a Authorization, token string, client *http.Client) (Rece
 	}
 	g := github{client: client, base: c.api, token: token, repository: c.repository}
 	var repo struct {
-		ID          int64  `json:"id"`
-		FullName    string `json:"full_name"`
-		Archived    bool   `json:"archived"`
-		Disabled    bool   `json:"disabled"`
-		Permissions struct {
-			Push bool `json:"push"`
-		} `json:"permissions"`
+		ID          int64           `json:"id"`
+		FullName    string          `json:"full_name"`
+		Archived    *bool           `json:"archived"`
+		Disabled    *bool           `json:"disabled"`
+		Permissions json.RawMessage `json:"permissions"`
 	}
 	if err := g.request("GET", "", nil, &repo); err != nil {
 		return receipt, err
 	}
-	if repo.ID != c.repositoryID || repo.FullName != c.repository || repo.Archived || repo.Disabled || !repo.Permissions.Push {
+	if repo.ID != c.repositoryID || repo.FullName != c.repository || repo.Archived == nil || repo.Disabled == nil || *repo.Archived || *repo.Disabled {
 		return receipt, errors.New("PUBLICATION_REPOSITORY_IDENTITY")
+	}
+	// GitHub's full-repository schema makes user permission metadata optional.
+	// Installation/job tokens can omit it. The signed job still pins repository
+	// identity and the commit API enforces the token's contents-write permission.
+	// Explicit denial or malformed permission metadata remains a refusal.
+	if len(repo.Permissions) != 0 {
+		var permissions struct {
+			Push *bool `json:"push"`
+		}
+		if json.Unmarshal(repo.Permissions, &permissions) != nil || permissions.Push == nil || !*permissions.Push {
+			return receipt, errors.New("PUBLICATION_REPOSITORY_PERMISSION")
+		}
 	}
 	tip, err := g.head(a.Branch)
 	if err != nil {

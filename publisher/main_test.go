@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -22,10 +23,11 @@ func fixture(t *testing.T) (config, ed25519.PrivateKey, Authorization) {
 		t.Fatal(err)
 	}
 	c := config{repository: "eni6ma/passplus-rotation-lab-tests", repositoryID: 123, publicKey: public, api: "https://api.github.com", now: func() time.Time { return time.Unix(2000000000, 0) }}
-	a := Authorization{Schema: "passplus.rotation-publication.v1", Environment: "synthetic-test", Audience: "passplus-compiled-github-publisher", Scope: "commit-circuit-family",
+	a := Authorization{Schema: "passplus.rotation-publication.v2", Environment: "synthetic-test", Audience: "passplus-compiled-github-publisher", Scope: "commit-circuit-family",
 		OperationID: identifier(1), AccountID: identifier(2), Handle: "synthetic-test", Repository: c.repository, RepositoryID: c.repositoryID, Branch: "synthetic-test",
 		PredecessorCommit: strings.Repeat("a", 40), PredecessorDigest: strings.Repeat("a", 64), OldRegistration: identifier(3), NewRegistration: identifier(4), OldVersion: 1, NewVersion: 2, OldEpoch: 1, NewEpoch: 2,
-		IssuedAt: 2000000000, ExpiresAt: 2000000060, AcceptedAt: 1999999990, BuildID: "test-build", OldCircuits: map[string]string{}, NewCircuits: map[string]string{}}
+		IssuedAt: 2000000000, ExpiresAt: 2000000060, AcceptedAt: 1999999990, BuildID: "test-build", OldCircuits: map[string]string{}, NewCircuits: map[string]string{},
+		RequestedGrades: []string{"ID1", "ID2", "ID3", "ID4"}, RequestingDevicePublicKey: sum([]byte("synthetic device public")), RequestingDeviceBinding: sum([]byte("synthetic browser binding")), AuthorizingNonce: identifier(20)}
 	for i, grade := range []string{"ID1", "ID2", "ID3", "ID4"} {
 		a.OldCircuits[grade] = sum([]byte("old" + grade))
 		a.NewCircuits[grade] = sum([]byte("new" + grade))
@@ -36,6 +38,7 @@ func fixture(t *testing.T) (config, ed25519.PrivateKey, Authorization) {
 		a.Files = append(a.Files, File{Path: name, Content: base64.StdEncoding.EncodeToString(data), SHA256: sum(data)})
 	}
 	a.PayloadDigest = a.Files[1].SHA256
+	a.ReplacementManifestSHA256 = a.Files[0].SHA256
 	pairs := [][]string{}
 	for _, file := range a.Files {
 		pairs = append(pairs, []string{file.Path, file.SHA256})
@@ -47,7 +50,8 @@ func fixture(t *testing.T) (config, ed25519.PrivateKey, Authorization) {
 		if i == 0 {
 			role, grade, digest = "existing", "ID4", a.PredecessorDigest
 		}
-		a.Proofs = append(a.Proofs, Proof{DecisionID: identifier(10 + i), Nonce: identifier(20 + i), OperationID: a.OperationID, Grade: grade, Role: role, Purpose: "circuit-family-replacement", PayloadDigest: digest, Accepted: true})
+		a.Proofs = append(a.Proofs, Proof{DecisionID: identifier(10 + i), Nonce: identifier(20 + i), OperationID: a.OperationID, Grade: grade, Role: role, Purpose: "circuit-family-replacement", PayloadDigest: digest, Accepted: true,
+			ContextHash: sum([]byte(fmt.Sprint("context", i))), DeviceBinding: a.RequestingDeviceBinding})
 	}
 	return c, key, a
 }
@@ -69,18 +73,27 @@ func TestSignedAuthorizationBindsFiveProofsAndExactPayload(t *testing.T) {
 		t.Fatal(err)
 	}
 	cases := map[string]func(*Authorization){
-		"login cannot replace":            func(a *Authorization) { a.Proofs[0].Purpose = "website-sign-in" },
-		"missing candidate proof":         func(a *Authorization) { a.Proofs = a.Proofs[:4] },
-		"wrong grade order":               func(a *Authorization) { a.Proofs[2].Grade = "ID4" },
-		"wrong proof":                     func(a *Authorization) { a.Proofs[0].Accepted = false },
-		"another operation":               func(a *Authorization) { a.Proofs[3].OperationID = identifier(99) },
-		"proof replay":                    func(a *Authorization) { a.Proofs[3].Nonce = a.Proofs[2].Nonce },
-		"different payload":               func(a *Authorization) { a.Files[1].Content = base64.StdEncoding.EncodeToString([]byte("changed")) },
-		"different branch":                func(a *Authorization) { a.Branch = "someone-else" },
-		"different repository":            func(a *Authorization) { a.RepositoryID++ },
-		"unchanged circuit identity":      func(a *Authorization) { a.NewCircuits["ID1"] = a.OldCircuits["ID1"] },
-		"expired":                         func(a *Authorization) { a.ExpiresAt = 1999999999 },
-		"production cannot use simulator": func(a *Authorization) { a.Environment = "production" },
+		"login cannot replace":               func(a *Authorization) { a.Proofs[0].Purpose = "website-sign-in" },
+		"missing candidate proof":            func(a *Authorization) { a.Proofs = a.Proofs[:4] },
+		"wrong grade order":                  func(a *Authorization) { a.Proofs[2].Grade = "ID4" },
+		"wrong proof":                        func(a *Authorization) { a.Proofs[0].Accepted = false },
+		"another operation":                  func(a *Authorization) { a.Proofs[3].OperationID = identifier(99) },
+		"proof replay":                       func(a *Authorization) { a.Proofs[3].Nonce = a.Proofs[2].Nonce },
+		"different payload":                  func(a *Authorization) { a.Files[1].Content = base64.StdEncoding.EncodeToString([]byte("changed")) },
+		"different branch":                   func(a *Authorization) { a.Branch = "someone-else" },
+		"different repository":               func(a *Authorization) { a.RepositoryID++ },
+		"unchanged circuit identity":         func(a *Authorization) { a.NewCircuits["ID1"] = a.OldCircuits["ID1"] },
+		"expired":                            func(a *Authorization) { a.ExpiresAt = 1999999999 },
+		"production cannot use simulator":    func(a *Authorization) { a.Environment = "production" },
+		"legacy authorization refused":       func(a *Authorization) { a.Schema = "passplus.rotation-publication.v1" },
+		"changed replacement manifest":       func(a *Authorization) { a.ReplacementManifestSHA256 = sum([]byte("different manifest")) },
+		"missing requesting device key":      func(a *Authorization) { a.RequestingDevicePublicKey = "" },
+		"changed requesting device":          func(a *Authorization) { a.RequestingDeviceBinding = sum([]byte("another browser")) },
+		"another requested grade set":        func(a *Authorization) { a.RequestedGrades = []string{"ID4"} },
+		"ambiguous requested grade encoding": func(a *Authorization) { a.RequestedGrades = []string{"ID1", "ID2,ID3", "ID4"} },
+		"changed authorizing nonce":          func(a *Authorization) { a.AuthorizingNonce = identifier(99) },
+		"missing proof context":              func(a *Authorization) { a.Proofs[0].ContextHash = "" },
+		"reused proof context":               func(a *Authorization) { a.Proofs[1].ContextHash = a.Proofs[0].ContextHash },
 	}
 	for name, change := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -103,12 +116,13 @@ func TestSignedAuthorizationBindsFiveProofsAndExactPayload(t *testing.T) {
 
 type provider struct {
 	sync.Mutex
-	tip, old        string
-	files           map[string]File
-	commits         int
-	lost            bool
-	wrongReadback   bool
-	wrongRepository bool
+	tip, old         string
+	files            map[string]File
+	commits          int
+	lost             bool
+	wrongReadback    bool
+	wrongRepository  bool
+	metadataOverride map[string]any
 }
 
 func (p *provider) serve(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +139,15 @@ func (p *provider) serve(w http.ResponseWriter, r *http.Request) {
 		if p.wrongRepository {
 			id++
 		}
-		respond(map[string]any{"id": id, "full_name": "eni6ma/passplus-rotation-lab-tests", "permissions": map[string]bool{"push": true}})
+		metadata := map[string]any{"id": id, "full_name": "eni6ma/passplus-rotation-lab-tests", "archived": false, "disabled": false, "permissions": map[string]bool{"push": true}}
+		for key, value := range p.metadataOverride {
+			if value == nil {
+				delete(metadata, key)
+			} else {
+				metadata[key] = value
+			}
+		}
+		respond(metadata)
 		return
 	}
 	if strings.Contains(r.URL.Path, "/git/ref/heads/") {
@@ -195,6 +217,58 @@ func (p *provider) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Error(w, "unexpected endpoint", 400)
+}
+func TestInstallationTokenRepositoryMetadataAndExplicitRefusal(t *testing.T) {
+	raw, err := os.ReadFile("github-repository.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var schema struct {
+		Required []string `json:"required"`
+	}
+	if json.Unmarshal(raw, &schema) != nil {
+		t.Fatal("repository schema unavailable")
+	}
+	required := map[string]bool{}
+	for _, field := range schema.Required {
+		required[field] = true
+	}
+	if required["permissions"] || !required["id"] || !required["full_name"] || !required["archived"] || !required["disabled"] {
+		t.Fatal("review GitHub repository contract change")
+	}
+	for _, variant := range []string{"omitted permissions", "push denied", "empty permissions", "archived", "disabled", "missing archive state", "missing disable state"} {
+		t.Run(variant, func(t *testing.T) {
+			c, _, a := fixture(t)
+			p := &provider{tip: a.PredecessorCommit, old: a.PredecessorCommit, metadataOverride: map[string]any{}}
+			switch variant {
+			case "omitted permissions":
+				p.metadataOverride["permissions"] = nil
+			case "push denied":
+				p.metadataOverride["permissions"] = map[string]bool{"push": false}
+			case "empty permissions":
+				p.metadataOverride["permissions"] = map[string]bool{}
+			case "archived":
+				p.metadataOverride["archived"] = true
+			case "disabled":
+				p.metadataOverride["disabled"] = true
+			case "missing archive state":
+				p.metadataOverride["archived"] = nil
+			case "missing disable state":
+				p.metadataOverride["disabled"] = nil
+			}
+			server := httptest.NewServer(http.HandlerFunc(p.serve))
+			defer server.Close()
+			c.api = server.URL
+			receipt, err := publish(c, a, "runtime-test-token", server.Client())
+			if variant == "omitted permissions" {
+				if err != nil || p.commits != 1 || receipt.Parent != a.PredecessorCommit {
+					t.Fatalf("job-token metadata refused: %v", err)
+				}
+			} else if err == nil || p.commits != 0 {
+				t.Fatalf("invalid repository state reached publication: %v", err)
+			}
+		})
+	}
 }
 func TestOrdinarySameBranchCommitPreservesParentAndIsIdempotent(t *testing.T) {
 	for _, lost := range []bool{false, true} {
