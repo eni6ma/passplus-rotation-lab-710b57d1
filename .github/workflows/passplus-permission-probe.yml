@@ -1,0 +1,68 @@
+name: Pass+ read-only repository permission probe
+run-name: Pass+ permission probe ${{ inputs.request_id }}
+"on":
+  workflow_dispatch:
+    inputs:
+      request_id:
+        required: true
+        type: string
+permissions:
+  contents: write
+jobs:
+  probe:
+    if: github.repository == 'eni6ma/passplus-rotation-lab-710b57d1' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Read provider metadata only
+        env:
+          GH_JOB_TOKEN: ${{ github.token }}
+          EXPECTED_REPOSITORY: 'eni6ma/passplus-rotation-lab-710b57d1'
+          EXPECTED_REPOSITORY_ID: '1448406382'
+        run: |
+          python3 - <<'PY'
+          import json,os,re,sys,urllib.request,urllib.error
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,*args,**kwargs):
+                  raise RuntimeError('PROBE_REDIRECT_REFUSED')
+          opener=urllib.request.build_opener(NoRedirect())
+          repo=os.environ['EXPECTED_REPOSITORY']
+          headers={'Authorization':'Bearer '+os.environ['GH_JOB_TOKEN'],'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'PassPlus-read-only-operator-probe'}
+          request=urllib.request.Request('https://api.github.com/repos/'+repo,headers=headers,method='GET')
+          with opener.open(request,timeout=15) as response:
+              raw=response.read(131073)
+              assert len(raw)<=131072
+              data=json.loads(raw)
+          assert data['id']==int(os.environ['EXPECTED_REPOSITORY_ID']) and data['full_name']==repo
+          assert data['archived'] is False and data['disabled'] is False
+          permissions=data.get('permissions')
+          safe={}
+          if isinstance(permissions,dict):
+              for key in ['admin','maintain','push','triage','pull','contents','metadata']:
+                  value=permissions.get(key)
+                  if isinstance(value,bool) or value in ['read','write','admin']:
+                      safe[key]=value
+          owner,name=repo.split('/')
+          body=json.dumps({'query':'query($owner:String!,$name:String!){repository(owner:$owner,name:$name){nameWithOwner viewerPermission}}','variables':{'owner':owner,'name':name}}).encode()
+          request=urllib.request.Request('https://api.github.com/graphql',data=body,headers={**headers,'Content-Type':'application/json'},method='POST')
+          graphql={}
+          graphql_status=200
+          try:
+              with opener.open(request,timeout=15) as response:
+                  raw=response.read(131073)
+                  assert len(raw)<=131072
+                  graphql=json.loads(raw)
+          except urllib.error.HTTPError as error:
+              graphql_status=error.code
+          view=(graphql.get('data') or {}).get('repository') or {}
+          if view:
+              assert view.get('nameWithOwner')==repo
+          viewer=view.get('viewerPermission')
+          assert viewer in [None,'ADMIN','MAINTAIN','WRITE','TRIAGE','READ']
+          types={k:type(v).__name__ for k,v in permissions.items() if re.fullmatch('[a-z_]{1,48}',k)} if isinstance(permissions,dict) else {}
+          assert len(types)<=64
+          service_keys=any(k in os.environ for k in ['PASSPLUS_WORKER_PRIVATE_JWK','SERVICE_PRIVATE','E6_RECIPIENT_PRIVATE'])
+          assert service_keys is False
+          report={'schema':'passplus.repository-permission-probe.v1','probeBuildId':'passplus-repository-permission-probe-20261106-01','repository':repo,'repositoryId':data['id'],'permissionsPresent':'permissions' in data,'permissionContainerType':type(permissions).__name__,'permissionFields':safe,'permissionFieldTypes':types,'viewerPermission':viewer,'graphqlStatus':graphql_status,'graphqlErrorsPresent':bool(graphql.get('errors')),'python':sys.version.split()[0],'readOnly':True,'passplusServiceKeysPresent':service_keys}
+          print(json.dumps(report,separators=(',',':')))
+          PY
