@@ -114,12 +114,15 @@ type Receipt struct {
 	Reconciled     bool   `json:"reconciled"`
 }
 type config struct {
-	repository   string
-	repositoryID int64
-	publicKey    ed25519.PublicKey
-	api          string
-	now          func() time.Time
+	repository        string
+	repositoryID      int64
+	publicKey         ed25519.PublicKey
+	api               string
+	now               func() time.Time
+	credentialProfile string
 }
+
+const githubInstallationCredentialProfile = "github-actions-installation-v1"
 
 func rejected() error { return errors.New("PUBLICATION_AUTHORIZATION_REJECTED") }
 func strict(data []byte, out any) error {
@@ -310,6 +313,9 @@ func (g github) readback(a Authorization, commit string) error {
 
 func publish(c config, a Authorization, token string, client *http.Client) (Receipt, error) {
 	var receipt Receipt
+	if c.credentialProfile != "" && c.credentialProfile != githubInstallationCredentialProfile {
+		return receipt, errors.New("PUBLICATION_CREDENTIAL_PROFILE")
+	}
 	if token == "" || strings.ContainsAny(token, "\r\n") {
 		return receipt, errors.New("PUBLICATION_CREDENTIAL_UNAVAILABLE")
 	}
@@ -327,15 +333,16 @@ func publish(c config, a Authorization, token string, client *http.Client) (Rece
 	if repo.ID != c.repositoryID || repo.FullName != c.repository || repo.Archived == nil || repo.Disabled == nil || *repo.Archived || *repo.Disabled {
 		return receipt, errors.New("PUBLICATION_REPOSITORY_IDENTITY")
 	}
-	// GitHub's full-repository schema makes user permission metadata optional.
-	// Installation/job tokens can omit it. The signed job still pins repository
-	// identity and the commit API enforces the token's contents-write permission.
-	// Explicit denial or malformed permission metadata remains a refusal.
+	// Repository permissions describe the user view. A measured Actions
+	// installation token returns all user flags false even with contents:write.
+	// Only the worker adapter selects that credential profile. Its authenticated
+	// commit API call enforces write permission; user-token callers retain the
+	// explicit push check. Neither profile bypasses signed job or identity checks.
 	if len(repo.Permissions) != 0 {
 		var permissions struct {
 			Push *bool `json:"push"`
 		}
-		if json.Unmarshal(repo.Permissions, &permissions) != nil || permissions.Push == nil || !*permissions.Push {
+		if json.Unmarshal(repo.Permissions, &permissions) != nil || (c.credentialProfile != githubInstallationCredentialProfile && (permissions.Push == nil || !*permissions.Push)) {
 			return receipt, errors.New("PUBLICATION_REPOSITORY_PERMISSION")
 		}
 	}

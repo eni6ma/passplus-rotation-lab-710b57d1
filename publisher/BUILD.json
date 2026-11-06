@@ -1,23 +1,24 @@
 {
   "schema": "passplus.compiled-publisher-build.v1",
-  "buildId": "passplus-rotation-20261106-publisher-07a",
+  "buildId": "passplus-rotation-20261106-publisher-07b",
   "scope": "synthetic-test-only",
   "compiler": "go1.25.1",
   "flags": [
     "-trimpath",
     "-buildvcs=false",
-    "-X main.buildID=passplus-rotation-20261106-publisher-07a"
+    "-X main.buildID=passplus-rotation-20261106-publisher-07b"
   ],
   "sourceSha256": {
-    "README.md": "010bfd3597cd5f62a03a5cb5f067c93cea093c2035c259f307766d9a0cd5f94c",
+    "README.md": "6b33457c1108d1778ef08719838fede81e04cf9b928d87359837c287341cda8a",
+    "github-actions-permissions.snapshot.json": "bf643c181490316dd5a0b98328079bea07daab9be5cc00b8d605b41bacb46b33",
     "github-committable-branch.schema.json": "67844e0ebdca6b480c30046efef0d5a193a480693fb00a8728845368ee1c0485",
     "github-repository.schema.json": "124550229a925e51956dc8874b32c7ec333104fdf702d900b84d6d5fb6e17753",
     "github_schema_test.go": "edb6aa4fe101615dda43e090f91ccaa19b6c76dd073a0e14171c9f8c7df37523",
     "go.mod": "1fa29589439453c06faf60897ea1558835225f84bf5caee1dc8053c48edf99e3",
     "large_archive_test.go": "4e24672cd67c169c6ac1718d9d3ad2b53f3d410e646187427e7eac47970a340e",
-    "main.go": "a038a5d5500f21a399b083b6345673f8d721a64eeb955a2fd97b1dfbdcbd7923",
-    "main_test.go": "65c56b5c309918a13bbb03650ec17290afbda17214a7cf60fb8c89ee7873a5f1",
-    "worker.go": "e694a6648ba7f47f5b4134aed7718abc8ae365251c944f80a5d0e06c7d7acacb",
+    "main.go": "0f1244ca183cab86d7c80f6d1a03723c40dad76f2e5c4a53c2ac8bedd3c6f472",
+    "main_test.go": "8f889883ebbc31ea4f4a69230ba56e4971c2fed4ce334b7e1d3600aee280162e",
+    "worker.go": "5a4e43b1094811af53fdbaa36bc0368c027a92a65b0453ed510265ad5679c1ce",
     "worker_test.go": "1b65ae6826fc067933a25c77cf9d76cc1a112aa2a546dc3f17dde0ade9e46367"
   },
   "runtimeCredentialEmbedded": false,
@@ -27,15 +28,15 @@
     "archive.e6.e6ps",
     "SHA256SUMS"
   ],
-  "tests": "go test ./...: PASS; exact four-entry grade array and malformed encoding, v2 manifest/device/nonce/context bindings, legacy refusal, live GitHub schemas, canonical bounds/readback, token custody and reconciliation",
+  "tests": "go test ./...: PASS; independently captured Actions installation-token view, native user denial, provider HTTP/GraphQL write denial with zero commits, exact identity, all v2 proof/manifest/device/nonce bindings, replay and reconciliation",
   "artifacts": {
     "passplus-publisher": {
-      "sha256": "645b3cfbf177716b6d46c9443c3877e7c492a0536c6fe7eaa89d41041de10467",
+      "sha256": "38ef3c1e533e18c35d5fbd93df8465ead66d9fb180e22cb3867ef8025825b253",
       "bytes": 8828578
     },
     "passplus-publisher-linux-amd64": {
-      "sha256": "f36955803847de56c72aab454f6f7d88537e0084eb9676082adf5201c718e8a1",
-      "bytes": 9170744
+      "sha256": "242929e94c3d098b675852d061d4c96eaf8d58d5f815481e198acc3df3ffdac9",
+      "bytes": 9166464
     }
   },
   "fileLimits": {
@@ -43,7 +44,7 @@
     "archive.e6.e6ps": 8454144,
     "SHA256SUMS": 512
   },
-  "testCasesPassed": 53,
+  "testCasesPassed": 60,
   "worker": {
     "profile": "compiled-publisher-v1",
     "githubTokenRuntimeOnly": true,
@@ -53,11 +54,11 @@
     "handoverMilliseconds": 1500,
     "hostedExecution": "NOT_RUN"
   },
-  "repositoryMetadata": "exact ID/name and explicit archived/disabled state; optional permissions; explicit supplied denial or malformed metadata refused",
+  "repositoryMetadata": "exact ID/name and explicit archived/disabled state; measured installation user flags are not token write authority; commit API must authorize; native user-token denial and malformed metadata retained",
   "owner": {
     "remote": "git@gitlab.com:eni6ma/sequioa/circuit-authority.git",
     "branch": "codex/epic-passplus-identity",
-    "baseCommit": "d1b29d7f7fbcdfcfe9b395a3c54a693671758551",
+    "baseCommit": "4ab6cc65d27a56c4a705e756d73bb7fc76d46ceb",
     "commitBinding": "exact source commit is recorded by the enclosing release and dependency receipts after commit/push"
   },
   "productFamily": "PassPlus",
@@ -72,7 +73,10 @@
   "apiVersions": {
     "publicationAuthorization": "passplus.rotation-publication.v2",
     "publicationReceipt": "passplus.rotation-publication-receipt.v1",
-    "workerTransport": "compiled-publisher-v1"
+    "workerTransport": "compiled-publisher-v1",
+    "credentialProfile": "github-actions-installation-v1",
+    "githubRest": "2022-11-28",
+    "githubGraphqlSchemaSha256": "67844e0ebdca6b480c30046efef0d5a193a480693fb00a8728845368ee1c0485"
   },
   "migrationVersion": "none; durable state belongs to the verifier",
   "lockfileHashes": {

@@ -1,0 +1,38 @@
+{
+  "schema": "passplus.repository-permission-probe.v1",
+  "probeBuildId": "passplus-repository-permission-probe-20261106-01",
+  "repository": "eni6ma/passplus-rotation-lab-710b57d1",
+  "repositoryId": 1448406382,
+  "permissionsPresent": true,
+  "permissionContainerType": "dict",
+  "permissionFields": {
+    "admin": false,
+    "maintain": false,
+    "push": false,
+    "triage": false,
+    "pull": false
+  },
+  "permissionFieldTypes": {
+    "admin": "bool",
+    "maintain": "bool",
+    "push": "bool",
+    "triage": "bool",
+    "pull": "bool"
+  },
+  "viewerPermission": null,
+  "graphqlStatus": 200,
+  "graphqlErrorsPresent": false,
+  "python": "3.12.3",
+  "readOnly": true,
+  "passplusServiceKeysPresent": false,
+  "workflowCommit": "a11ce97e8db6f4d13c61c5a6911dd64e3cddbb6b",
+  "workflowSha256": "a8319eb9802b0b7e284e3922d3907ab734666957ea3c0101bfeda44ed7c6b360",
+  "runId": 42288450411,
+  "url": "https://github.com/eni6ma/passplus-rotation-lab-710b57d1/actions/runs/42288450411",
+  "checkedAt": "2026-11-06T20:27:15.166Z",
+  "source": "actual GitHub Actions repository metadata with declared contents:write and metadata:read",
+  "declaredJobPermissions": {
+    "contents": "write",
+    "metadata": "read"
+  }
+}

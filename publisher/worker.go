@@ -330,7 +330,7 @@ func runWorker() error {
 	}
 	client := &http.Client{Timeout: 45 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return workerError() }}
 	agent := workerAgent{service: workerClient{origin: origin.String(), private: private, public: public, client: client, now: time.Now, cooldown: 1500 * time.Millisecond},
-		publication: config{repository: os.Getenv("PASSPLUS_REPOSITORY"), repositoryID: repositoryID, publicKey: publicAuthority, api: "https://api.github.com", now: time.Now}, token: func() string { return os.Getenv("GITHUB_TOKEN") }}
+		publication: config{repository: os.Getenv("PASSPLUS_REPOSITORY"), repositoryID: repositoryID, publicKey: publicAuthority, api: "https://api.github.com", now: time.Now, credentialProfile: githubInstallationCredentialProfile}, token: func() string { return os.Getenv("GITHUB_TOKEN") }}
 	deadline := time.Now().Add(time.Duration(wait) * time.Second)
 	for {
 		outcome, e := agent.step()

@@ -270,6 +270,65 @@ func TestInstallationTokenRepositoryMetadataAndExplicitRefusal(t *testing.T) {
 		})
 	}
 }
+func TestRecordedActionsUserViewAndProviderWriteAuthorization(t *testing.T) {
+	raw, err := os.ReadFile("github-actions-permissions.snapshot.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var snapshot struct {
+		Schema      string            `json:"schema"`
+		Permissions map[string]bool   `json:"permissionFields"`
+		Viewer      *string           `json:"viewerPermission"`
+		Job         map[string]string `json:"declaredJobPermissions"`
+	}
+	if json.Unmarshal(raw, &snapshot) != nil || snapshot.Schema != "passplus.repository-permission-probe.v1" || snapshot.Viewer != nil || snapshot.Job["contents"] != "write" || len(snapshot.Permissions) != 5 {
+		t.Fatal("actual installation-token snapshot required")
+	}
+	for _, value := range snapshot.Permissions {
+		if value {
+			t.Fatal("review changed observed user view")
+		}
+	}
+	for _, variant := range []string{"installation allowed", "user denied", "installation HTTP denied", "installation GraphQL denied", "installation wrong repository", "unknown profile"} {
+		t.Run(variant, func(t *testing.T) {
+			c, _, a := fixture(t)
+			c.credentialProfile = githubInstallationCredentialProfile
+			p := &provider{tip: a.PredecessorCommit, old: a.PredecessorCommit, metadataOverride: map[string]any{"permissions": snapshot.Permissions}}
+			if variant == "user denied" {
+				c.credentialProfile = ""
+			}
+			if variant == "unknown profile" {
+				c.credentialProfile = "unrecognized"
+			}
+			if variant == "installation wrong repository" {
+				p.wrongRepository = true
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/graphql" && variant == "installation HTTP denied" {
+					http.Error(w, "write permission denied", http.StatusForbidden)
+					return
+				}
+				if r.URL.Path == "/graphql" && variant == "installation GraphQL denied" {
+					w.Header().Set("Content-Type", "application/json")
+					_ = json.NewEncoder(w).Encode(map[string]any{"errors": []map[string]string{{"type": "FORBIDDEN", "message": "write permission denied"}}})
+					return
+				}
+				p.serve(w, r)
+			}))
+			defer server.Close()
+			c.api = server.URL
+			receipt, err := publish(c, a, "runtime-test-token", server.Client())
+			if variant == "installation allowed" {
+				if err != nil || p.commits != 1 || receipt.Parent != a.PredecessorCommit {
+					t.Fatalf("installation write failed: %v", err)
+				}
+			} else if err == nil || p.commits != 0 {
+				t.Fatalf("denied credential or identity published: %v", err)
+			}
+		})
+	}
+}
+
 func TestOrdinarySameBranchCommitPreservesParentAndIsIdempotent(t *testing.T) {
 	for _, lost := range []bool{false, true} {
 		t.Run(fmt.Sprint("lost-response-", lost), func(t *testing.T) {
