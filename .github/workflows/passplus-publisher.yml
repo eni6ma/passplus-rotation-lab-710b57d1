@@ -37,15 +37,15 @@ jobs:
           python3 - <<'PY'
           import hashlib,json,pathlib,subprocess
           manifest=json.loads(pathlib.Path('BUILD.json').read_text())
-          assert manifest['buildId']=='passplus-rotation-20261106-publisher-07b'
+          assert manifest['buildId']=='passplus-rotation-20261107-publisher-08'
           assert subprocess.check_output(['go','env','GOVERSION'],text=True).strip()==manifest['compiler']
           for name,expected in manifest['sourceSha256'].items():
               assert hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()==expected,name
           PY
-          CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags '-X main.buildID=passplus-rotation-20261106-publisher-07b' -o ../publisher-worker .
+          CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags '-X main.buildID=passplus-rotation-20261107-publisher-08' -o ../publisher-worker .
           python3 - <<'PY'
           import hashlib,pathlib
-          assert hashlib.sha256(pathlib.Path('../publisher-worker').read_bytes()).hexdigest()=='242929e94c3d098b675852d061d4c96eaf8d58d5f815481e198acc3df3ffdac9'
+          assert hashlib.sha256(pathlib.Path('../publisher-worker').read_bytes()).hexdigest()=='b968a784e8da9a10d0b3541564b6fa610c596ff462ae5d118b6ff27a0efb11de'
           PY
       - name: Run the authenticated compiled worker
         env:

@@ -33,7 +33,7 @@ func fixture(t *testing.T) (config, ed25519.PrivateKey, Authorization) {
 		a.NewCircuits[grade] = sum([]byte("new" + grade))
 		_ = i
 	}
-	for _, name := range []string{"manifest.json", "archive.e6.e6ps", "SHA256SUMS"} {
+	for _, name := range []string{"manifest.json", "archive.cr.e6", "SHA256SUMS"} {
 		data := []byte("synthetic " + name)
 		a.Files = append(a.Files, File{Path: name, Content: base64.StdEncoding.EncodeToString(data), SHA256: sum(data)})
 	}
@@ -80,6 +80,9 @@ func TestSignedAuthorizationBindsFiveProofsAndExactPayload(t *testing.T) {
 		"another operation":                  func(a *Authorization) { a.Proofs[3].OperationID = identifier(99) },
 		"proof replay":                       func(a *Authorization) { a.Proofs[3].Nonce = a.Proofs[2].Nonce },
 		"different payload":                  func(a *Authorization) { a.Files[1].Content = base64.StdEncoding.EncodeToString([]byte("changed")) },
+		"credential attachment":              func(a *Authorization) { a.Files = append(a.Files, File{Path: "credential.e6", Content: "sealed"}) },
+		"credential as archive":              func(a *Authorization) { a.Files[1].Path = "credential.e6" },
+		"legacy mixed path":                  func(a *Authorization) { a.Files[1].Path = "archive.e6.e6ps" },
 		"different branch":                   func(a *Authorization) { a.Branch = "someone-else" },
 		"different repository":               func(a *Authorization) { a.RepositoryID++ },
 		"unchanged circuit identity":         func(a *Authorization) { a.NewCircuits["ID1"] = a.OldCircuits["ID1"] },
@@ -380,5 +383,16 @@ func TestReadbackAndRepositoryIdentityRefuseSubstitution(t *testing.T) {
 				t.Fatal("published before validating repository and predecessor")
 			}
 		})
+	}
+}
+
+func TestCredentialAndLegacyPathsCannotEnterNewPublication(t *testing.T) {
+	for _, name := range []string{"credential.e6", "family.e6", "private.json.e6ps", "archive.e6.e6ps"} {
+		if fileLimit(name) != 0 {
+			t.Fatalf("private or legacy path was publishable: %s", name)
+		}
+	}
+	if fileLimit("archive.cr.e6") != maxEncryptedArchive {
+		t.Fatal("circuit-only archive limit changed")
 	}
 }

@@ -1,50 +1,50 @@
 {
   "schema": "passplus.compiled-publisher-build.v1",
-  "buildId": "passplus-rotation-20261106-publisher-07b",
+  "buildId": "passplus-rotation-20261107-publisher-08",
   "scope": "synthetic-test-only",
   "compiler": "go1.25.1",
   "flags": [
     "-trimpath",
     "-buildvcs=false",
-    "-X main.buildID=passplus-rotation-20261106-publisher-07b"
+    "-X main.buildID=passplus-rotation-20261107-publisher-08"
   ],
   "sourceSha256": {
-    "README.md": "6b33457c1108d1778ef08719838fede81e04cf9b928d87359837c287341cda8a",
+    "README.md": "e2923944ffeccf4e3a3318fa2f5e3df2568bb577ea1985d61495f772bac14835",
     "github-actions-permissions.snapshot.json": "bf643c181490316dd5a0b98328079bea07daab9be5cc00b8d605b41bacb46b33",
     "github-committable-branch.schema.json": "67844e0ebdca6b480c30046efef0d5a193a480693fb00a8728845368ee1c0485",
     "github-repository.schema.json": "124550229a925e51956dc8874b32c7ec333104fdf702d900b84d6d5fb6e17753",
     "github_schema_test.go": "edb6aa4fe101615dda43e090f91ccaa19b6c76dd073a0e14171c9f8c7df37523",
     "go.mod": "1fa29589439453c06faf60897ea1558835225f84bf5caee1dc8053c48edf99e3",
     "large_archive_test.go": "4e24672cd67c169c6ac1718d9d3ad2b53f3d410e646187427e7eac47970a340e",
-    "main.go": "0f1244ca183cab86d7c80f6d1a03723c40dad76f2e5c4a53c2ac8bedd3c6f472",
-    "main_test.go": "8f889883ebbc31ea4f4a69230ba56e4971c2fed4ce334b7e1d3600aee280162e",
+    "main.go": "ed4519c8aba8f38dda7f6433fd60dfc2fe0da0768d32bf9f59ec6bad7f921797",
+    "main_test.go": "dbf724f14a158c9eaab73cf97006c04686720f6817860503e197543a90bb4c60",
     "worker.go": "5a4e43b1094811af53fdbaa36bc0368c027a92a65b0453ed510265ad5679c1ce",
     "worker_test.go": "1b65ae6826fc067933a25c77cf9d76cc1a112aa2a546dc3f17dde0ade9e46367"
   },
   "runtimeCredentialEmbedded": false,
-  "publication": "ordinary commit at the same handle branch tip; complete E6AR archive protected by existing E6PS v2 envelope",
+  "publication": "ordinary successor commit on the same handle branch; admitted circuit-only E6AR v1 in E6PS v2; sealed .e6 credentials remain in ENI6MA private custody",
   "registryFiles": [
     "manifest.json",
-    "archive.e6.e6ps",
+    "archive.cr.e6",
     "SHA256SUMS"
   ],
-  "tests": "go test ./...: PASS; independently captured Actions installation-token view, native user denial, provider HTTP/GraphQL write denial with zero commits, exact identity, all v2 proof/manifest/device/nonce bindings, replay and reconciliation",
+  "tests": "go test ./...: PASS; new public file allowlist, private/legacy path refusal, exact proof/manifest/device/nonce bindings, runtime-only token, provider denial, ordinary successor commit and reconciliation",
   "artifacts": {
     "passplus-publisher": {
-      "sha256": "38ef3c1e533e18c35d5fbd93df8465ead66d9fb180e22cb3867ef8025825b253",
+      "sha256": "833f29776e92754a7d240f5e652b73cb80beb2970c1669ff5beca85a2e437171",
       "bytes": 8828578
     },
     "passplus-publisher-linux-amd64": {
-      "sha256": "242929e94c3d098b675852d061d4c96eaf8d58d5f815481e198acc3df3ffdac9",
-      "bytes": 9166464
+      "sha256": "b968a784e8da9a10d0b3541564b6fa610c596ff462ae5d118b6ff27a0efb11de",
+      "bytes": 9166048
     }
   },
   "fileLimits": {
     "manifest.json": 16384,
-    "archive.e6.e6ps": 8454144,
+    "archive.cr.e6": 8454144,
     "SHA256SUMS": 512
   },
-  "testCasesPassed": 60,
+  "testCasesPassed": 64,
   "worker": {
     "profile": "compiled-publisher-v1",
     "githubTokenRuntimeOnly": true,
@@ -58,7 +58,7 @@
   "owner": {
     "remote": "git@gitlab.com:eni6ma/sequioa/circuit-authority.git",
     "branch": "codex/epic-passplus-identity",
-    "baseCommit": "4ab6cc65d27a56c4a705e756d73bb7fc76d46ceb",
+    "baseCommit": "21371a337f477b031f8a8cc2758dfae85b4bb169",
     "commitBinding": "exact source commit is recorded by the enclosing release and dependency receipts after commit/push"
   },
   "productFamily": "PassPlus",
@@ -81,5 +81,11 @@
   "migrationVersion": "none; durable state belongs to the verifier",
   "lockfileHashes": {
     "go.mod": "1fa29589439453c06faf60897ea1558835225f84bf5caee1dc8053c48edf99e3"
+  },
+  "artifactPolicy": {
+    "circuitArchive": "archive.cr.e6",
+    "credentialPublicationsAllowed": false,
+    "legacyMixedPublicationsAllowed": false,
+    "verifierAuthenticatedOpeningRequired": true
   }
 }

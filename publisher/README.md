@@ -14,7 +14,7 @@ The command reads its signed envelope from standard input. Configuration is limi
 
 This release is restricted to isolated `eni6ma/passplus-rotation-lab-*` repositories and synthetic handles. It refuses production claims. Production authority and approved proof transport remain separate qualification gates.
 
-The circuit files use the existing whole-E6 publication layout: `manifest.json`, `archive.e6.e6ps` and `SHA256SUMS`. The E6PS envelope protects the complete unchanged E6AR circuit archive. Raw immutable readback supports full archives larger than the GitHub JSON contents base64 limit.
+New circuit publication uses `manifest.json`, `archive.cr.e6` and `SHA256SUMS`. The E6PS envelope protects the admitted circuit-only E6AR archive. Raw immutable readback supports full archives larger than the GitHub JSON contents base64 limit.
 
 File limits match the canonical reader: the encrypted archive allows an 8 MiB full archive plus 64 KiB of envelope overhead, the manifest allows 16 KiB, and checksums allow 512 bytes. Signed authorization tests cover each exact bound and refusal above it.
 
@@ -25,3 +25,14 @@ The private service caller uses runtime `PASSPLUS_WORKER_PRIVATE_JWK`; the indep
 Worker output contains only outcome, operation ID and publisher build. Failed signatures, altered download bytes, expired/mismatched service results or invalid five-proof authorization stop before a credential read or commit. Turning off new ceremonies does not remove accepted jobs, their current-epoch checks or reconciliation. Hosted GitHub Actions execution and Wasmer replacement acceptance require separate evidence.
 
 Build 05 corrects the branch input to GitHub's `CommittableBranch`: the field is `branchName`. The live API rejected the former `refName` input before creating a commit. A captured live schema and an independent schema-bound commit test now guard that request. The ordinary same-branch commit, expected-parent guard, history preservation and credential custody remain the same.
+
+## Circuit and credential separation
+
+New publication admits exactly `manifest.json`, `archive.cr.e6` and `SHA256SUMS`.
+The verifier authenticates and admits the circuit-only E6AR profile before it
+signs the bounded publication authorization. The archive still uses E6PS v2.
+Plain `.e6` credentials, `private.json.e6ps`, extra files and the old mixed
+`archive.e6.e6ps` path cannot enter this worker's file allowlist. The worker
+receives no credential custody field or storage access. Legacy Git objects and
+prior publisher artifacts remain preserved; this version does not republish
+legacy mixed bundles. GitHub tokens remain runtime-only.

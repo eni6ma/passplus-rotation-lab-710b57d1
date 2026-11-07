@@ -33,7 +33,7 @@ func fileLimit(name string) int {
 	switch name {
 	case "manifest.json":
 		return 16384
-	case "archive.e6.e6ps":
+	case "archive.cr.e6":
 		return maxEncryptedArchive
 	case "SHA256SUMS":
 		return 512
@@ -195,14 +195,14 @@ func authorize(c config, input []byte) (Authorization, error) {
 		contexts[p.ContextHash] = true
 	}
 	pairs := [][]string{}
-	for i, name := range []string{"manifest.json", "archive.e6.e6ps", "SHA256SUMS"} {
+	for i, name := range []string{"manifest.json", "archive.cr.e6", "SHA256SUMS"} {
 		file := a.Files[i]
 		content, err := base64.StdEncoding.DecodeString(file.Content)
 		limit := fileLimit(name)
 		if err != nil || file.Path != name || len(content) == 0 || len(content) > limit || !hash.MatchString(file.SHA256) || sum(content) != file.SHA256 {
 			return a, rejected()
 		}
-		if name == "archive.e6.e6ps" && file.SHA256 != a.PayloadDigest {
+		if name == "archive.cr.e6" && file.SHA256 != a.PayloadDigest {
 			return a, rejected()
 		}
 		if name == "manifest.json" && file.SHA256 != a.ReplacementManifestSHA256 {
