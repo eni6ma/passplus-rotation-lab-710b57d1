@@ -1,7 +1,7 @@
 {
   "schema": "passplus.synthetic-worker-provenance.v1",
-  "sourceCommit": "cdd233d73e8b8b7dafda20c8fbcedbcae17dd717",
-  "sourceDigest": "397b59274bb4c9d48bd7320f340f6bf7be5a898f737bc3e9b228d66fdd5ec09c",
+  "sourceCommit": "92120681671f934eb8dfc3f3c3e33b313f1494aa",
+  "sourceDigest": "8303ebbf24141e4e8a3dff67bd3a940e079ca4106d5c3d08422d9f13fdcb279a",
   "dependencyRemote": "git@gitlab.com:eni6ma/sequioa/circuit-authority.git",
   "dependencyCommit": "892aece78835ae5887b981c692284b83cbadde87",
   "publisherBuild": "passplus-rotation-20261107-publisher-08",
